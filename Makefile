@@ -2,6 +2,8 @@
 #
 #
 
+MKDIR = mkdir -p
+
 ASSETS = Assets
 BUILDRESULTS = BuildResults
 
@@ -24,28 +26,49 @@ BUILDROOT-2016-64-SOURCES = $(BUILDROOT-2016)-x86_64
 BUILDROOT-2019-64-SOURCES = $(BUILDROOT-2019)-x86_64
 BUILDROOT-2019-32-SOURCES = $(BUILDROOT-2019)-i686
 
-BR-2016-64-ITEMS = $(BUILDRESULTS)/
-BR-2019-64-ITEMS = 
-BR-2019-32-ITEMS = 
+BR-2016-64-DIR   = $(BUILDRESULTS)/BR-2016-64
+BR-2019-64-DIR   = $(BUILDRESULTS)/BR-2019-64
+BR-2019-32-DIR   = $(BUILDRESULTS)/BR-2019-32
 
-all: $(BUILDRESULTS)/BZIMAGE_2016_64 $(BUILDRESULTS)/BZIMAGE_2019_64 $(BUILDRESULTS)/BZIMAGE_2019_32
+BR-2016-64-ITEMS = $(BR-2016-64-DIR)/bzImage $(BR-2016-64-DIR)/rootfs.ext2.gz
+BR-2019-64-ITEMS = $(BR-2019-64-DIR)/bzImage $(BR-2019-64-DIR)/rootfs.ext2.gz
+BR-2019-32-ITEMS = $(BR-2019-32-DIR)/bzImage $(BR-2019-32-DIR)/rootfs.ext2.gz
+
+all: br-2016 br-2019
 	@echo "### Building all ###"
 
+br-2016: $(BR-2016-64-ITEMS)
+	@echo "### Building $@ ###"
 
-$(BUILDRESULTS)/BZIMAGE_2016_64: $(BUILDROOT-2016-BUILD-DIR)
+br-2019: br-2019-64 br-2019-32
+	@echo "### Building $@ ###"
+
+br-2019-64: $(BR-2019-64-ITEMS)
+	@echo "### Building $@ ###"
+
+br-2019-32: $(BR-2019-32-ITEMS)
+	@echo "### Building $@ ###"
+
+$(BR-2016-64-ITEMS): $(BUILDROOT-2016-BUILD-DIR)
 	@echo "### Building $@"
+	@$(MKDIR) $(BR-2016-64-DIR)
 	time make -C $(BUILDROOT-2016-BUILD-DIR)/$(BUILDROOT-2016-64-SOURCES)
-	@touch $@
+	@cp $(BUILDROOT-2016-BUILD-DIR)/$(BUILDROOT-2016-64-SOURCES)/output/images/bzImage $(BR-2016-64-DIR)/bzImage
+	@cp $(BUILDROOT-2016-BUILD-DIR)/$(BUILDROOT-2016-64-SOURCES)/output/images/rootfs.ext2.gz $(BR-2016-64-DIR)/rootfs.ext2.gz
 
-$(BUILDRESULTS)/BZIMAGE_2019_64: $(BUILDROOT-2019-BUILD-DIR)
+$(BR-2019-64-ITEMS): $(BUILDROOT-2019-BUILD-DIR)
 	@echo "### Building $@"
+	@$(MKDIR) $(BR-2019-64-DIR)
 	time make -C $(BUILDROOT-2019-BUILD-DIR)/$(BUILDROOT-2019-64-SOURCES)
-	@touch $@
+	@cp $(BUILDROOT-2019-BUILD-DIR)/$(BUILDROOT-2019-64-SOURCES)/output/images/bzImage $(BR-2019-64-DIR)/bzImage
+	@cp $(BUILDROOT-2019-BUILD-DIR)/$(BUILDROOT-2019-64-SOURCES)/output/images/rootfs.ext2.gz $(BR-2019-64-DIR)/rootfs.ext2.gz
 
-$(BUILDRESULTS)/BZIMAGE_2019_32: $(BUILDROOT-2019-BUILD-DIR)
+$(BR-2019-32-ITEMS): $(BUILDROOT-2019-BUILD-DIR)
 	@echo "### Building $@"
+	@$(MKDIR) $(BR-2019-32-DIR)
 	time make -C $(BUILDROOT-2019-BUILD-DIR)/$(BUILDROOT-2019-32-SOURCES)
-	@touch $@
+	@cp $(BUILDROOT-2019-BUILD-DIR)/$(BUILDROOT-2019-32-SOURCES)/output/images/bzImage $(BR-2019-32-DIR)/bzImage
+	@cp $(BUILDROOT-2019-BUILD-DIR)/$(BUILDROOT-2019-32-SOURCES)/output/images/rootfs.ext2.gz $(BR-2019-32-DIR)/rootfs.ext2.gz
 
 
 
@@ -56,32 +79,32 @@ $(BUILDRESULTS)/BZIMAGE_2019_32: $(BUILDROOT-2019-BUILD-DIR)
 
 $(BUILDROOT-2016-BUILD-DIR):
 	@echo "### Creating $@"
-	@mkdir -p $(BUILDROOT-2016-BUILD-DIR)          2>/dev/null
-	@mkdir -p $(BUILDROOT-2016-BUILD-DIR)/download 2>/dev/null
-	@mkdir -p $(BUILDROOT-2016-BUILD-DIR)/host     2>/dev/null
+	@$(MKDIR) $(BUILDROOT-2016-BUILD-DIR)          2>/dev/null
+	@$(MKDIR) $(BUILDROOT-2016-BUILD-DIR)/download 2>/dev/null
+	@$(MKDIR) $(BUILDROOT-2016-BUILD-DIR)/host     2>/dev/null
 	@git clone $(BUILDROOT-SITE-URL) --branch $(BUILDROOT-SITE-2016-BRANCH) $(BUILDROOT-2016-BUILD-DIR)/site-top-2016
 	@tar xzf $(ASSETS)/$(BUILDROOT-2016-TARBALL) -C $(BUILDROOT-2016-BUILD-DIR)
 	@mv $(BUILDROOT-2016-BUILD-DIR)/$(BUILDROOT-2016) $(BUILDROOT-2016-BUILD-DIR)/$(BUILDROOT-2016-64-SOURCES)
-	ln -s ../$(BUILDROOT-SITE-REPO-NAME) $(BUILDROOT-2016-BUILD-DIR)/$(BUILDROOT-2016-64-SOURCES)/site
+	ln -s ../site-top-2016 $(BUILDROOT-2016-BUILD-DIR)/$(BUILDROOT-2016-64-SOURCES)/site
 	pushd $(BUILDROOT-2016-BUILD-DIR)/$(BUILDROOT-2016-64-SOURCES) ; \
 	./site/scripts/br-installconf.sh -a x86_64                     ; \
 	popd
 
 $(BUILDROOT-2019-BUILD-DIR):
 	@echo "### Creating $@"
-	@mkdir -p $(BUILDROOT-2019-BUILD-DIR)          2>/dev/null
-	@mkdir -p $(BUILDROOT-2019-BUILD-DIR)/download 2>/dev/null
-	@mkdir -p $(BUILDROOT-2019-BUILD-DIR)/host     2>/dev/null
+	@$(MKDIR) $(BUILDROOT-2019-BUILD-DIR)          2>/dev/null
+	@$(MKDIR) $(BUILDROOT-2019-BUILD-DIR)/download 2>/dev/null
+	@$(MKDIR) $(BUILDROOT-2019-BUILD-DIR)/host     2>/dev/null
 	@git clone $(BUILDROOT-SITE-URL) --branch $(BUILDROOT-SITE-2019-BRANCH) $(BUILDROOT-2019-BUILD-DIR)/site-top-2019
 	@tar xzf $(ASSETS)/$(BUILDROOT-2019-TARBALL) -C $(BUILDROOT-2019-BUILD-DIR)
 	@mv $(BUILDROOT-2019-BUILD-DIR)/$(BUILDROOT-2019) $(BUILDROOT-2019-BUILD-DIR)/$(BUILDROOT-2019-64-SOURCES)
-	ln -s ../$(BUILDROOT-SITE-REPO-NAME) $(BUILDROOT-2019-BUILD-DIR)/$(BUILDROOT-2019-64-SOURCES)/site
+	ln -s ../site-top-2019 $(BUILDROOT-2019-BUILD-DIR)/$(BUILDROOT-2019-64-SOURCES)/site
 	pushd $(BUILDROOT-2019-BUILD-DIR)/$(BUILDROOT-2019-64-SOURCES) ; \
 	./site/scripts/br-installconf.sh -a x86_64                     ; \
 	popd
 	@tar xzf $(ASSETS)/$(BUILDROOT-2019-TARBALL) -C $(BUILDROOT-2019-BUILD-DIR)
 	@mv $(BUILDROOT-2019-BUILD-DIR)/$(BUILDROOT-2019) $(BUILDROOT-2019-BUILD-DIR)/$(BUILDROOT-2019-32-SOURCES)
-	ln -s ../$(BUILDROOT-SITE-REPO-NAME) $(BUILDROOT-2019-BUILD-DIR)/$(BUILDROOT-2019-32-SOURCES)/site
+	ln -s ../site-top-2019 $(BUILDROOT-2019-BUILD-DIR)/$(BUILDROOT-2019-32-SOURCES)/site
 	pushd $(BUILDROOT-2019-BUILD-DIR)/$(BUILDROOT-2019-32-SOURCES) ; \
 	./site/scripts/br-installconf.sh -a i686                       ; \
 	popd
@@ -107,11 +130,11 @@ $(BUILDROOT-2019-BUILD-DIR):
 
 ###$(ASSETS):
 ###	@echo "### Creating $@ directory"
-###	mkdir $(ASSETS) 2>/dev/null
+###	$(MKDIR) $(ASSETS) 2>/dev/null
 
 ###$(BUILDRESULTS):
 ###	@echo "### Creating $@ directory"
-###	@mkdir $(BUILDRESULTS) 2>/dev/null
+###	@$(MKDIR) $(BUILDRESULTS) 2>/dev/null
 
 #
 #   Various useful additional targets
