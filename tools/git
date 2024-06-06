@@ -1,0 +1,10 @@
+#!/bin/sh
+#
+#   git wrapper to avoid git calls erroneously returning results from repositories outside 
+#   the buildroot-site branches.
+#
+
+echo `date` ": git wrapper called with: $@ at " $(pwd) >> /tmp/${USER}/buildroot1_git_invocations
+
+exit 128
+

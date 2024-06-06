@@ -5,11 +5,10 @@
 #                  buildroot-2019.08   for i686   (32-bit)
 #
 
-MKDIR = mkdir -p
-
-ASSETS-DIR = Assets
-BUILDRESULTS-DIR = BuildResults
-DEPENDENCIES-DIR = Dependencies
+BUILDROOT-ORG-DIR = buildroot.org
+BUILDRESULTS-DIR  = BuildResults
+DEPENDENCIES-DIR  = Dependencies
+TOOLS-DIR = tools
 
 BUILDROOT-SITE-REPO-NAME   = buildroot-site
 BUILDROOT-SITE-URL         = https://github.com/slaclab/buildroot-site.git
@@ -43,6 +42,19 @@ BR-2019-64-ITEMS = $(BR-2019-64-DIR)/bzImage $(BR-2019-64-DIR)/rootfs.ext2.gz
 BR-2019-32-ITEMS = $(BR-2019-32-DIR)/bzImage $(BR-2019-32-DIR)/rootfs.ext2.gz
 
 #
+#   Create all the required directories in advance
+#
+
+REQUIRED_DIRS = $(DEPENDENCIES-DIR) $(BR-2016-64-DIR) $(BR-2019-64-DIR) $(BR-2019-32-DIR) \
+		$(BUILDROOT-2016-BUILD-DIR)/download $(BUILDROOT-2016-BUILD-DIR)/host     \
+		$(BUILDROOT-2019-BUILD-DIR)/download $(BUILDROOT-2019-BUILD-DIR)/host
+
+__MKDIRS := $(shell for d in $(REQUIRED_DIRS);               \
+		do                                           \
+		  [[ -d $$d ]] || mkdir -p $$d 2>/dev/null ; \
+		done )
+
+#
 #   The buildroot build process uses git to try and determine version information
 #   based on information in the git repository.  However, if the buildroot-site
 #   branch doesn't have a corresponding git repo, git keeps working its way up
@@ -56,8 +68,8 @@ BR-2019-32-ITEMS = $(BR-2019-32-DIR)/bzImage $(BR-2019-32-DIR)/rootfs.ext2.gz
 #   unnecessary/mistaken 'make menuconfig' from being run.
 #
 
-__ORIGINAL_PATH=${PATH}
-__GIT_WRAPPER_DIR=$(shell pwd)/$(ASSETS-DIR)
+__GIT_WRAPPER_DIR=$(shell pwd)/$(TOOLS-DIR)
+__GIT_WRAPPER_PATH=${__GIT_WRAPPER_DIR}:${PATH}
 
 
 .PHONY: all
@@ -66,26 +78,25 @@ all: $(DEPENDENCIES-ITEMS) br-2016 br-2019
 
 $(DEPENDENCIES-ITEMS):
 	@echo "### Setting up dependencies"
-	@$(MKDIR) $(DEPENDENCIES-DIR) 2>/dev/null
-	@git clone $(BUILDROOT-SITE-URL) --branch $(BUILDROOT-SITE-2016-BRANCH) $(BUILDROOT-SITE-2016)
-	@git clone $(BUILDROOT-SITE-URL) --branch $(BUILDROOT-SITE-2019-BRANCH) $(BUILDROOT-SITE-2019)
+	git clone $(BUILDROOT-SITE-URL) --branch $(BUILDROOT-SITE-2016-BRANCH) $(BUILDROOT-SITE-2016)
+	git clone $(BUILDROOT-SITE-URL) --branch $(BUILDROOT-SITE-2019-BRANCH) $(BUILDROOT-SITE-2019)
 
 .PHONY: dependencies
 dependencies:
 	$(MAKE) $(DEPENDENCIES-ITEMS)
 
-br-2016: $(BR-2016-64-ITEMS)
+br-2016: $(BR-2016-64-ITEMS) $(DEPENDENCIES-ITEMS)
 	@echo "### Building $@ ###"
-	@echo ">>> __ORIGINAL_PATH=\'${ORIGINAL_PATH}\'"
-	@echo ">>> __GIT_WRAPPER_DIR=\'${GIT_WRAPPER_DIR}\'"
+	@echo ">>> \$PATH=\'${PATH}\'"
+	@echo ">>> __GIT_WRAPPER_PATH=\'${__GIT_WRAPPER_PATH}\'"
 
 br-2019: br-2019-64 br-2019-32
 	@echo "### Building $@ ###"
 
-br-2019-64: $(BR-2019-64-ITEMS)
+br-2019-64: $(BR-2019-64-ITEMS) $(DEPENDENCIES-ITEMS)
 	@echo "### Building $@ ###"
 
-br-2019-32: $(BR-2019-32-ITEMS)
+br-2019-32: $(BR-2019-32-ITEMS) $(DEPENDENCIES-ITEMS)
 	@echo "### Building $@ ###"
 
 #
@@ -93,30 +104,21 @@ br-2019-32: $(BR-2019-32-ITEMS)
 #   git 'version detection' issue described above.
 #
 
-$(BR-2016-64-ITEMS): $(BUILDROOT-2016-BUILD-DIR)
+$(BR-2016-64-ITEMS): $(BUILDROOT-2016-BUILD-DIR)/$(BUILDROOT-2016-64-SOURCES)
 	@echo "### Building $@"
-	@$(MKDIR) $(BR-2016-64-DIR)
-	export PATH=${__GIT_WRAPPER_DIR}:${PATH}
-	time $(MAKE) -C $(BUILDROOT-2016-BUILD-DIR)/$(BUILDROOT-2016-64-SOURCES)
-	export PATH=${__ORIGINAL_PATH}
+	PATH=$(__GIT_WRAPPER_PATH) time $(MAKE) -C $(BUILDROOT-2016-BUILD-DIR)/$(BUILDROOT-2016-64-SOURCES)
 	@cp $(BUILDROOT-2016-BUILD-DIR)/$(BUILDROOT-2016-64-SOURCES)/output/images/bzImage $(BR-2016-64-DIR)/bzImage
 	@cp $(BUILDROOT-2016-BUILD-DIR)/$(BUILDROOT-2016-64-SOURCES)/output/images/rootfs.ext2.gz $(BR-2016-64-DIR)/rootfs.ext2.gz
 
-$(BR-2019-64-ITEMS): $(BUILDROOT-2019-BUILD-DIR)
+$(BR-2019-64-ITEMS): $(BUILDROOT-2019-BUILD-DIR)/$(BUILDROOT-2019-64-SOURCES)
 	@echo "### Building $@"
-	@$(MKDIR) $(BR-2019-64-DIR)
-	export PATH=${__GIT_WRAPPER_DIR}:${PATH}
-	time $(MAKE) -C $(BUILDROOT-2019-BUILD-DIR)/$(BUILDROOT-2019-64-SOURCES)
-	export PATH=${__ORIGINAL_PATH}
+	PATH=$(__GIT_WRAPPER_PATH) time $(MAKE) -C $(BUILDROOT-2019-BUILD-DIR)/$(BUILDROOT-2019-64-SOURCES)
 	@cp $(BUILDROOT-2019-BUILD-DIR)/$(BUILDROOT-2019-64-SOURCES)/output/images/bzImage $(BR-2019-64-DIR)/bzImage
 	@cp $(BUILDROOT-2019-BUILD-DIR)/$(BUILDROOT-2019-64-SOURCES)/output/images/rootfs.ext2.gz $(BR-2019-64-DIR)/rootfs.ext2.gz
 
-$(BR-2019-32-ITEMS): $(BUILDROOT-2019-BUILD-DIR)
+$(BR-2019-32-ITEMS): $(BUILDROOT-2019-BUILD-DIR)/$(BUILDROOT-2019-32-SOURCES)
 	@echo "### Building $@"
-	@$(MKDIR) $(BR-2019-32-DIR)
-	export PATH=${__GIT_WRAPPER_DIR}:${PATH}
-	time $(MAKE) -C $(BUILDROOT-2019-BUILD-DIR)/$(BUILDROOT-2019-32-SOURCES)
-	export PATH=${__ORIGINAL_PATH}
+	PATH=$(__GIT_WRAPPER_PATH) time $(MAKE) -C $(BUILDROOT-2019-BUILD-DIR)/$(BUILDROOT-2019-32-SOURCES)
 	@cp $(BUILDROOT-2019-BUILD-DIR)/$(BUILDROOT-2019-32-SOURCES)/output/images/bzImage $(BR-2019-32-DIR)/bzImage
 	@cp $(BUILDROOT-2019-BUILD-DIR)/$(BUILDROOT-2019-32-SOURCES)/output/images/rootfs.ext2.gz $(BR-2019-32-DIR)/rootfs.ext2.gz
 
@@ -126,52 +128,23 @@ $(BR-2019-32-ITEMS): $(BUILDROOT-2019-BUILD-DIR)
 #   Each build directory gets a link to the git checkout of the corresponding "buildroot-site" branch.
 #
 
-$(BUILDROOT-2016-BUILD-DIR): $(BUILDROOT-SITE-2016)
+$(BUILDROOT-2016-BUILD-DIR)/$(BUILDROOT-2016-64-SOURCES): $(BUILDROOT-SITE-2016)
 	@echo "### Creating $@"
-	@$(MKDIR) $(BUILDROOT-2016-BUILD-DIR)          2>/dev/null
-	@$(MKDIR) $(BUILDROOT-2016-BUILD-DIR)/download 2>/dev/null
-	@$(MKDIR) $(BUILDROOT-2016-BUILD-DIR)/host     2>/dev/null
-	@tar xzf $(ASSETS-DIR)/$(BUILDROOT-2016-TARBALL) -C $(BUILDROOT-2016-BUILD-DIR)
+	@tar xzf $(BUILDROOT-ORG-DIR)/$(BUILDROOT-2016-TARBALL) -C $(BUILDROOT-2016-BUILD-DIR)
 	@mv $(BUILDROOT-2016-BUILD-DIR)/$(BUILDROOT-2016) $(BUILDROOT-2016-BUILD-DIR)/$(BUILDROOT-2016-64-SOURCES)
 	ln -s ../../../$(BUILDROOT-SITE-2016) $(BUILDROOT-2016-BUILD-DIR)/$(BUILDROOT-2016-64-SOURCES)/site
-	pushd $(BUILDROOT-2016-BUILD-DIR)/$(BUILDROOT-2016-64-SOURCES) && \
-	./site/scripts/br-installconf.sh -a x86_64                     && \
-	popd
+	cd $(BUILDROOT-2016-BUILD-DIR)/$(BUILDROOT-2016-64-SOURCES)  &&  PATH=$(__GIT_WRAPPER_PATH) ./site/scripts/br-installconf.sh -a x86_64
 
-$(BUILDROOT-2019-BUILD-DIR): $(BUILDROOT-SITE-2019)
+$(BUILDROOT-2019-BUILD-DIR)/$(BUILDROOT-2019-64-SOURCES) $(BUILDROOT-2019-BUILD-DIR)/$(BUILDROOT-2019-32-SOURCES): $(BUILDROOT-SITE-2019)
 	@echo "### Creating $@"
-	@$(MKDIR) $(BUILDROOT-2019-BUILD-DIR)          2>/dev/null
-	@$(MKDIR) $(BUILDROOT-2019-BUILD-DIR)/download 2>/dev/null
-	@$(MKDIR) $(BUILDROOT-2019-BUILD-DIR)/host     2>/dev/null
-	@tar xzf $(ASSETS-DIR)/$(BUILDROOT-2019-TARBALL) -C $(BUILDROOT-2019-BUILD-DIR)
+	@tar xzf $(BUILDROOT-ORG-DIR)/$(BUILDROOT-2019-TARBALL) -C $(BUILDROOT-2019-BUILD-DIR)
 	@mv $(BUILDROOT-2019-BUILD-DIR)/$(BUILDROOT-2019) $(BUILDROOT-2019-BUILD-DIR)/$(BUILDROOT-2019-64-SOURCES)
 	ln -s ../../../$(BUILDROOT-SITE-2019) $(BUILDROOT-2019-BUILD-DIR)/$(BUILDROOT-2019-64-SOURCES)/site
-	pushd $(BUILDROOT-2019-BUILD-DIR)/$(BUILDROOT-2019-64-SOURCES) && \
-	./site/scripts/br-installconf.sh -a x86_64                     && \
-	popd
-	@tar xzf $(ASSETS-DIR)/$(BUILDROOT-2019-TARBALL) -C $(BUILDROOT-2019-BUILD-DIR)
+	cd $(BUILDROOT-2019-BUILD-DIR)/$(BUILDROOT-2019-64-SOURCES)  &&  PATH=$(__GIT_WRAPPER_PATH) ./site/scripts/br-installconf.sh -a x86_64
+	@tar xzf $(BUILDROOT-ORG-DIR)/$(BUILDROOT-2019-TARBALL) -C $(BUILDROOT-2019-BUILD-DIR)
 	@mv $(BUILDROOT-2019-BUILD-DIR)/$(BUILDROOT-2019) $(BUILDROOT-2019-BUILD-DIR)/$(BUILDROOT-2019-32-SOURCES)
 	ln -s ../../../$(BUILDROOT-SITE-2019) $(BUILDROOT-2019-BUILD-DIR)/$(BUILDROOT-2019-32-SOURCES)/site
-	pushd $(BUILDROOT-2019-BUILD-DIR)/$(BUILDROOT-2019-32-SOURCES) && \
-	./site/scripts/br-installconf.sh -a i686                       && \
-	popd
-
-
-#
-#   Fetch buildroot.org tarballs from the Asseti/Artifact depot (TBD)
-#
-
-###$(ASSETS-DIR)/$(BUILDROOT-2016-TARBALL):
-###	@echo "### Fetching $@"
-###	@$(MKDIR) $(ASSETS-DIR) 2>/dev/null
-###	#bs fetch_asset $(BUILDROOT-2016-TARBALL) $(ASSETS-DIR)
-###	cp /scratch/katzung/assets/$(BUILDROOT-2016-TARBALL) $(ASSETS-DIR)
-
-###$(ASSETS-DIR)/$(BUILDROOT-2019-TARBALL):
-###	@echo "### Fetching $@"
-###	@$(MKDIR) $(ASSETS-DIR) 2>/dev/null
-###	#bs fetch_asset $(BUILDROOT-2019-TARBALL) $(ASSETS-DIR)
-###	cp /scratch/katzung/assets/$(BUILDROOT-2019-TARBALL) $(ASSETS-DIR)
+	cd $(BUILDROOT-2019-BUILD-DIR)/$(BUILDROOT-2019-32-SOURCES)  &&  PATH=$(__GIT_WRAPPER_PATH) ./site/scripts/br-installconf.sh -a i686
 
 #
 #   Various useful additional targets
@@ -180,16 +153,14 @@ $(BUILDROOT-2019-BUILD-DIR): $(BUILDROOT-SITE-2019)
 .PHONY: clean
 clean:
 	@echo "### Removing $(BUILDRESULTS-DIR)"
-	@###@rm -rf $(ASSETS-DIR)
 	@rm -rf $(BUILDRESULTS-DIR)
 
 .PHONY: distclean
 distclean:
 	@echo "### Removing $(BUILDRESULTS-DIR)"
 	@rm -rf $(BUILDRESULTS-DIR)
-	### Don't want to accidentally nuke this directory...
-	###@echo "### Removing $(DEPENDENCIES-DIR)"
-	###@rm -rf $(DEPENDENCIES-DIR)
+	@echo "### Removing $(DEPENDENCIES-DIR)"
+	@rm -rf $(DEPENDENCIES-DIR)
 
 .PHONY: clean-br-2016
 clean-br-2016:
@@ -204,3 +175,31 @@ dev-environment:
 	@echo "### Setting up development environment"
 	@$(MAKE) dependencies
 	
+.PHONY: help
+help:
+	@echo ""
+	@echo "buildroot1 make targets:"
+	@echo ""
+	@echo "    all               # 2016-64, 2019-64 & -32 buildroots (default)"
+	@echo ""
+	@echo "    br-2016           # 2016 buildroot  (64 bit)"
+	@echo "    br-2019           # 2019 buildroots (64 & 32 bit)"
+	@echo "    br-2019-32        # 2019 buildroot  (32 bit)"
+	@echo "    br-2019-64        # 2019 buildroot  (64 bit)"
+	@echo ""
+	@echo "    clean             # delete BuildResults directory"
+	@echo "    distclean         # delete BuildResults and Dependencies directories"
+	@echo "    clean-br-2016     # delete 2016 buildroot-related directories"
+	@echo "    clean-br-2019     # delete 2019 buildroot-related directories"
+	@echo "    dev-environment   # clones 'buildroot-site' branches for development"
+	@echo ""
+	
+.PHONY: help2
+help2:
+	@$(MAKE) --print-data-base --question no-such-target | \
+		grep -v -e '^no-such-target' -e '^makefile'  | \
+		awk '/^[^.%][-A-Za-z0-9_]*:/                   \
+			{ print substr($$1, 1, length($$1)-1) }' | \
+		sort                                         | \
+		pr --omit-pagination --width=80 --columns=4
+
